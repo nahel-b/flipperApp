@@ -7,8 +7,9 @@ const manager = new BleManager();
 
 export default function App() {
   const [messages, setMessages] = useState([]);
+  const [log, setLog] = useState([]);
   const [connected, setConnected] = useState(false);
-  const [serviceUuid, setServiceUuid] = useState('19ed82ae-ed21-4c9d-4145-228e62fe0000'); // UUID mis à jour
+  const [serviceUuid, setServiceUuid] = useState('19ed82ae-ed21-4c9d-4145-228e61fe0000'); // UUID mis à jour
   const [characteristicUuid, setCharacteristicUuid] = useState('19ed82ae-ed21-4c9d-4145-228e62fe0000'); // TX
 
 
@@ -41,6 +42,16 @@ export default function App() {
           await connectedDevice.discoverAllServicesAndCharacteristics();
 
           setConnected(true);
+
+          const allServices = await connectedDevice.services();
+          for (const service of allServices) {
+            const characteristics = await service.characteristics();
+            console.log('Service:', service.uuid);
+            characteristics.forEach(c => {
+              console.log('totodu60 Characteristic:', c.uuid, 'Properties:', c.properties);
+            });
+            setLog((prev) => [...prev, `Service: ${service.uuid, c.properties}`]);
+          }
 
           // Pour récupérer les messages envoytés par le flipper
           // non testé encore
@@ -95,12 +106,24 @@ export default function App() {
       
       <Button title="Scanner et se connecter" onPress={scanAndConnect} disabled={connected} />
       <ScrollView style={{ marginTop: 20 }}>
+
+        <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Messages:</Text>
         
         {messages.map((msg, i) => (
           <View key={i} style={{  }}>
             <Text>{msg}</Text>
           </View>
         ))}
+
+        <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 20 }}>Log:</Text>
+
+        {log.map((msg, i) => (
+          <View key={i} style={{  }}>
+            <Text>{msg}</Text>
+          </View>
+        ))}
+        {connected && <Text style={{ color: 'green' }}>Connecté</Text>}
+        {!connected && <Text style={{ color: 'red' }}>Non connecté</Text>}
       </ScrollView>
     </View>
   );

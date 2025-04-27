@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "flipperApp",
-    "slug": "flipperApp",
+    "name": "flipperCompagnon",
+    "slug": "flipperCompagnon",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nahelb.flipperApp"
+      "bundleIdentifier": "com.nahelb.flipperCompagnon"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +26,7 @@
         "android.permission.BLUETOOTH_ADMIN",
         "android.permission.BLUETOOTH_CONNECT"
       ],
-      "package": "com.nahelb.flipperApp"
+      "package": "com.nahelb.flipperCompagnon"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,6 +43,12 @@
           "bluetoothAlwaysPermission": "Allow $(PRODUCT_NAME) to connect to bluetooth devices"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "47726a5c-5e92-466d-bebf-ffa679de4800"
+      }
+    },
+    "owner": "nahel-b"
   }
 }
