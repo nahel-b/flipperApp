@@ -7,6 +7,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import parseAprs from './parserAPRS';
 
 import { UUIDContext } from './uuidContext';
@@ -53,6 +54,7 @@ export default function MapScreen({ onScanConnect }) {
   const [connected, setConnected] = useState(false);
 
 
+  const [nbMessage, setNbMessage] = useState(0);
   const [messages, setMessages] = useState(['F4ABC>APRS,WIDE1-1::F1XYZ   :Hello from 30,000 feet! \n  F4ABC-11>APRS,WIDE2-1:!4852.45N/00220.32E>000/000/A=035000 Balloon launch test']);
   const [parsedMessages, setParsedMessages] = useState([]);
  
@@ -83,6 +85,11 @@ export default function MapScreen({ onScanConnect }) {
       const parsedMessages = listMessages.map((message) => {
         const parsedMessage = parseAprs(message);
         console.log('Parsed:', parsedMessage);
+        setNbMessage((prev) => prev + 1);
+        if(parsedMessage.pos)
+          {
+            console.log('Parsed:', parsedMessage);
+          }
         return parsedMessage;
       }
       );
@@ -171,20 +178,33 @@ export default function MapScreen({ onScanConnect }) {
       showsUserLocation={true}
       showsCompass={true}
     >
-      {default_marker.map((marker, index) => (
+      {parsedMessages.map((marker, index) => (
         <Marker
         key={index}
-        coordinate={marker.coordinate}
+        coordinate={{
+          latitude: marker.latitude,
+          longitude: marker.longitude
+        }} 
         
       >
-        <View style={styles.markerContainer}>
+        
+        <View style={{  justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableOpacity style={styles.markerContainer} onPress={() => console.log(marker)}>
+          <View style={styles.temperatureContainer}>
+          <FontAwesome5 name="satellite" size={20} color="black" />
+        {/* <Text style={{ fontSize: 12, color: 'black', fontWeight: 'bold' }}>{"infos"}</Text> */}
+        </View>
+        </TouchableOpacity>
+        </View>
+       
+        {/* <View style={styles.markerContainer}>
           
           <View style={styles.temperatureContainer}>
             <Text style={styles.temperatureText}>{marker.title}</Text>
             <Text style={styles.temperatureText}>{marker.temperature}°C</Text>
           </View>
           <View style={styles.marker} />
-        </View>
+        </View> */}
       </Marker>
       ))}
     </MapView>
@@ -197,6 +217,7 @@ export default function MapScreen({ onScanConnect }) {
        </View>
        </View>
       <View style={styles.bottomBar}>
+        <Text style={{fontWeight : "bold"}} >Trame APRS recus : {nbMessage}</Text>
         <TouchableOpacity style={styles.button} onPress={onScanConnect}>
           <Text style={styles.buttonText}>{ connected ? "Se reconnecter" : "Scanner et se connecter"}</Text>
         </TouchableOpacity>
