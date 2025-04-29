@@ -32,6 +32,8 @@ export default function App() {
                   );
                 } else if (route.name === 'Ballon') {
                   return <MaterialCommunityIcons name="airballoon" size={24} color={color} />;
+                } else if (route.name === 'BLE') {
+                  return <MaterialCommunityIcons name="bluetooth" size={24} color={color} />;
                 }
               },
               tabBarActiveTintColor: '#007AFF',
@@ -48,6 +50,7 @@ export default function App() {
           >
             <Tab.Screen name="Compagnon" component={MapScreen} />
             <Tab.Screen name="Ballon" component={ballonView} />
+            <Tab.Screen name="BLE" component={BleView} />
           </Tab.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

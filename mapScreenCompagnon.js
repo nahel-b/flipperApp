@@ -1,6 +1,9 @@
 import React,{useState,useEffect,} from 'react';
-import { View, StyleSheet, TouchableOpacity, Text,Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text,Platform, Modal, Dimensions, ScrollView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import * as Haptics from 'expo-haptics';
+import base64 from 'react-native-base64';
+
 import {
 
   SafeAreaProvider,
@@ -12,39 +15,8 @@ import parseAprs from './parserAPRS';
 
 import { UUIDContext } from './uuidContext';
 
-const default_marker = [{
-  coordinate: {
-    latitude: 45.1885,
-    longitude: 5.7245,
-  },
-  title: 'Default Marker',
-  temperature: 0,
-},
-{
-  coordinate: {
-    latitude: 45.187,
-    longitude: 5.7245,
-  },
-  title: 'Default Marker',
-  temperature: 0,
-},
-{
-  coordinate: {
-    latitude: 45.1886,
-    longitude: 5.7245,
-  },
-  title: 'Default Marker',
-  temperature: 0,
-},
-{
-  coordinate: {
-    latitude: 45.1885,
-    longitude: 5.7245,
-  },
-  title: 'Default Marker',
-  temperature: 0,
-}
-]
+import { BleManager } from 'react-native-ble-plx';
+// const manager = new BleManager();
 
 
 
@@ -53,11 +25,15 @@ export default function MapScreen({ onScanConnect }) {
   const insets = useSafeAreaInsets();
   const [connected, setConnected] = useState(false);
 
+  const [log, setLog] = useState([]);
+  const [showLog, setShowLog] = useState(false);
+
 
   const [nbMessage, setNbMessage] = useState(0);
-  const [messages, setMessages] = useState(['F4ABC>APRS,WIDE1-1::F1XYZ   :Hello from 30,000 feet! \n  F4ABC-11>APRS,WIDE2-1:!4852.45N/00220.32E>000/000/A=035000 Balloon launch test']);
+  const [messages, setMessages] = useState([]);
   const [parsedMessages, setParsedMessages] = useState([]);
- 
+  const [selectedMarker, setSelectedMarker] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
   
 
 
@@ -77,22 +53,33 @@ export default function MapScreen({ onScanConnect }) {
 
     useEffect(() => {
       if (messages.length === 0) return;
-    
-      const firstMessage = messages[0];
 
+      const firstMessage = messages[0];
       const listMessages = firstMessage.split('\n');
 
+      console.log('flipperMessageEndecode :', firstMessage);
+
+      setLog((prev) => [...prev, 'flipperMessageEndecode : ' + firstMessage]);
+
       const parsedMessages = listMessages.map((message) => {
+
+        console.log('flipperMessageSplit :', message);
+        setLog((prev) => [...prev, 'flipperMessageSplit : ' + message]);
+
         const parsedMessage = parseAprs(message);
-        console.log('Parsed:', parsedMessage);
+
+        console.log('flipperMessageParsed :', parsedMessage);
+        setLog((prev) => [...prev, 'flipperMessageParsed : ' + JSON.stringify(parsedMessage)]);
+
         setNbMessage((prev) => prev + 1);
-        if(parsedMessage.pos)
-          {
-            console.log('Parsed:', parsedMessage);
-          }
+        if(parsedMessage.pos) {
+          console.log('Parsed:', parsedMessage);
+        }
+
+        // haptic pour le plaisir :)
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         return parsedMessage;
-      }
-      );
+      });
       setParsedMessages((prev) => [...prev, ...parsedMessages]);
 
     
@@ -102,71 +89,84 @@ export default function MapScreen({ onScanConnect }) {
 
   const scanAndConnect = () => {
 
-    // manager.startDeviceScan(null, null, async (error, device) => { 
 
-    //   if (error) { console.log(error); return; }
+    // let trame1 = 'F4ABC-11>APRS,WIDE2-1:!4852.45N/00220.32E>000/000/A=035000 Balloon launch test';
 
-    //   if (device?.name?.includes('Lora')) {
+    // let trame2 = 'F4ABC>APRS,TCPIP*,qAC,T2FRANCE:;BALLOON1 *112345z4802.45N/00220.33E-Test payload \n F4ABC>APRS,WIDE1-1:_092300z4852.45N/00260.31E_000/000g005t017r000p000P000h55b10130';
 
-    //     console.log('Appareil trouvé:', device.name);
-    //     manager.stopDeviceScan();
+    // let trame3 = 'F4ABC>APRS,WIDE1-1:_092300z4852.45N/00260.31E_000/000g005t017r000p000P000h55b10130';
 
-    //     try {
+    // let trame4 = 'F4ABC>APRS,WIDE1-1::F1XYZ    :Hello from 30,000 feet!';
 
-    //       const connectedDevice = await device.connect();
-    //       await connectedDevice.discoverAllServicesAndCharacteristics();
+    // setMessages((prev) => [...prev, trame1]);
+    // setMessages((prev) => [...prev, trame2]);
+    // setMessages((prev) => [...prev, trame3]);
+    // setMessages((prev) => [...prev, trame4]);
 
-    //       setConnected(true);
+    manager.startDeviceScan(null, null, async (error, device) => { 
 
-    //       const allServices = await connectedDevice.services();
-    //       for (const service of allServices) {
-    //         const characteristics = await service.characteristics();
-    //         console.log('Service:', service.uuid);
-    //         setLog((prev) => [...prev, `Service: ${service.uuid}`]);
+      if (error) { console.log(error); return; }
+
+      if (device?.name?.includes('Lora')) {
+
+        console.log('Appareil trouvé:', device.name);
+        manager.stopDeviceScan();
+
+        try {
+
+          const connectedDevice = await device.connect();
+          await connectedDevice.discoverAllServicesAndCharacteristics();
+
+          setConnected(true);
+
+          const allServices = await connectedDevice.services();
+          for (const service of allServices) {
+            const characteristics = await service.characteristics();
+            console.log('Service:', service.uuid);
+            setLog((prev) => [...prev, `Service: ${service.uuid}`]);
             
-    //         characteristics.forEach(c => {
-    //           console.log('Characteristic:', c.uuid, 
-    //             'isNotifiable:', c.isNotifiable, 
-    //             'isWritableWithResponse:', c.isWritableWithResponse, 
-    //             'isWritableWithoutResponse:', c.isWritableWithoutResponse, 
-    //             'isReadable:', c.isReadable
-    //           );
-    //           setLog((prev) => [...prev, `Characteristic: ${c.uuid}, isNotifiable: ${c.isNotifiable}, isWritable: ${c.isWritableWithResponse || c.isWritableWithoutResponse}, isReadable: ${c.isReadable}`]);
-    //         });
-    //       }
+            characteristics.forEach(c => {
+              console.log('Characteristic:', c.uuid, 
+                'isNotifiable:', c.isNotifiable, 
+                'isWritableWithResponse:', c.isWritableWithResponse, 
+                'isWritableWithoutResponse:', c.isWritableWithoutResponse, 
+                'isReadable:', c.isReadable
+              );
+              setLog((prev) => [...prev, `Characteristic: ${c.uuid}, isNotifiable: ${c.isNotifiable}, isWritable: ${c.isWritableWithResponse || c.isWritableWithoutResponse}, isReadable: ${c.isReadable}`]);
+            });
+          }
 
-    //       // Pour récupérer les messages envoytés par le flipper
-    //       // non testé encore
-    //       connectedDevice.monitorCharacteristicForService(
-    //         serviceUuid, // RT 
-    //         characteristicUuid, // TX 
-    //         (error, characteristic) => {
-    //           if (error) {
-    //             console.log('Erreur moniteur:', error);
-    //             return;
-    //           }
+          // Pour récupérer les messages envoytés par le flipper
+          // non testé encore
+          connectedDevice.monitorCharacteristicForService(
+            serviceUuid, // RT 
+            characteristicUuid, // TX 
+            (error, characteristic) => {
+              if (error) {
+                console.log('Erreur moniteur:', error);
+                return;
+              }
 
-    //           const value = characteristic?.value;
-    //           if (value) {
-    //             const decoded = base64.decode(value);
-    //             setMessages((prev) => [...prev, decoded]);
-    //           }
-    //         }
-    //       );
+              const value = characteristic?.value;
+              if (value) {
+                const decoded = base64.decode(value);
+                setMessages((prev) => [...prev, decoded]);
+              }
+            }
+          );
 
-    //     } catch (erreur) {
-    //       console.log('erreur :', erreur);
-    //     }
-    //   }
-    // });
+        } catch (erreur) {
+          console.log('erreur :', erreur);
+        }
+      }
+    });
 
   }
 
 
   return (
      <View style={styles.container}>
-
-     
+      
     <MapView
       style={styles.map}
       initialRegion={{
@@ -179,37 +179,76 @@ export default function MapScreen({ onScanConnect }) {
       showsCompass={true}
     >
       {parsedMessages.map((marker, index) => (
+        marker.latitude && marker.longitude && (
         <Marker
-        key={index}
-        coordinate={{
-          latitude: marker.latitude,
-          longitude: marker.longitude
-        }} 
-        
-      >
-        
-        <View style={{  justifyContent: 'center', alignItems: 'center' }}>
-        <TouchableOpacity style={styles.markerContainer} onPress={() => console.log(marker)}>
-          <View style={styles.temperatureContainer}>
-          <FontAwesome5 name="satellite" size={20} color="black" />
-        {/* <Text style={{ fontSize: 12, color: 'black', fontWeight: 'bold' }}>{"infos"}</Text> */}
-        </View>
-        </TouchableOpacity>
-        </View>
-       
-        {/* <View style={styles.markerContainer}>
-          
-          <View style={styles.temperatureContainer}>
-            <Text style={styles.temperatureText}>{marker.title}</Text>
-            <Text style={styles.temperatureText}>{marker.temperature}°C</Text>
+          key={index}
+          coordinate={{
+            latitude: marker.latitude,
+            longitude: marker.longitude
+          }}
+          onPress={() => {
+            setSelectedMarker(marker);
+            setModalVisible(true);
+          }}
+        >
+          <View style={{  justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity style={styles.markerContainer}>
+              <View style={styles.temperatureContainer}>
+                <FontAwesome5 name="satellite" size={20} color="black" />
+                <Text style={styles.temperatureText}>{'trame'}</Text>
+              </View>
+            </TouchableOpacity>
           </View>
-          <View style={styles.marker} />
-        </View> */}
-      </Marker>
+        </Marker>
+        )
       ))}
     </MapView>
-      
-       <View style={{ position: 'absolute',width : "100%",justifyContent : "center", top : insets.top,}}>
+    {/* Modal d'infos marker */}
+    <Modal
+      visible={modalVisible}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent,{marginBottom: insets.bottom}]}>
+          <View style={{alignItems:'center', marginBottom:8}}>
+            <View style={{width:40, height:4, backgroundColor:'#ccc', borderRadius:2, marginVertical:8}}/>
+            <Text style={{fontWeight:'bold', fontSize:18}}>Détails de la trame APRS</Text>
+          </View>
+          <ScrollView>
+            {selectedMarker && (
+              <>
+                <Text>Type : {selectedMarker.type}</Text>
+                <Text>Callsign : {selectedMarker.callsign}{selectedMarker.ssid ? '-' + selectedMarker.ssid : ''}</Text>
+                {selectedMarker.latitude && selectedMarker.longitude && (
+                  <Text>Position : {selectedMarker.latitude.toFixed(5)}, {selectedMarker.longitude.toFixed(5)}</Text>
+                )}
+                {selectedMarker.altitude && (
+                  <Text>Altitude : {selectedMarker.altitude} m</Text>
+                )}
+                {selectedMarker.temperature !== undefined && (
+                  <Text>Température : {selectedMarker.temperature}°C</Text>
+                )}
+                {selectedMarker.humidity !== undefined && (
+                  <Text>Humidité : {selectedMarker.humidity}%</Text>
+                )}
+                {selectedMarker.target && (
+                  <Text>Cible : {selectedMarker.target}</Text>
+                )}
+                {selectedMarker.message && (
+                  <Text>Message : {selectedMarker.message}</Text>
+                )}
+              </>
+            )}
+          </ScrollView>
+          <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+            <Text style={{color:'white', fontWeight:'bold'}}>Fermer</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+    <View style={{ position: 'absolute',width : "100%",justifyContent : "center", top : insets.top,}}>
        <Text style={{ fontSize: 24,textAlign : "center", fontWeight: 'bold' }}>📡 Application compagnon 📡</Text>
        <View style={{ flexDirection : "row", alignItems : "baseline",justifyContent : "center", }}>
         <View style={{ width : 10,height : 10,marginTop : 0, borderRadius : 10, backgroundColor : connected ? "green" : "red", marginRight : 5 }}></View>
@@ -218,7 +257,7 @@ export default function MapScreen({ onScanConnect }) {
        </View>
       <View style={styles.bottomBar}>
         <Text style={{fontWeight : "bold"}} >Trame APRS recus : {nbMessage}</Text>
-        <TouchableOpacity style={styles.button} onPress={onScanConnect}>
+        <TouchableOpacity style={styles.button} onPress={scanAndConnect}>
           <Text style={styles.buttonText}>{ connected ? "Se reconnecter" : "Scanner et se connecter"}</Text>
         </TouchableOpacity>
        
@@ -282,5 +321,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     color: '#333',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.0)',
+  },
+  modalContent: {
+    width: '100%',
+    maxHeight: Dimensions.get('window').height * 0.5,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+  },
+  closeButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
   },
 });
