@@ -7,6 +7,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import parseAprs from './parserAPRS';
 
 import { UUIDContext } from './uuidContext';
 
@@ -50,6 +51,11 @@ export default function MapScreen({ onScanConnect }) {
 
   const insets = useSafeAreaInsets();
   const [connected, setConnected] = useState(false);
+
+
+  const [messages, setMessages] = useState(['F4ABC>APRS,WIDE1-1::F1XYZ   :Hello from 30,000 feet! \n  F4ABC-11>APRS,WIDE2-1:!4852.45N/00220.32E>000/000/A=035000 Balloon launch test']);
+  const [parsedMessages, setParsedMessages] = useState([]);
+ 
   
 
 
@@ -63,8 +69,29 @@ export default function MapScreen({ onScanConnect }) {
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
         ]);
       }
+
     }, []);
 
+
+    useEffect(() => {
+      if (messages.length === 0) return;
+    
+      const firstMessage = messages[0];
+
+      const listMessages = firstMessage.split('\n');
+
+      const parsedMessages = listMessages.map((message) => {
+        const parsedMessage = parseAprs(message);
+        console.log('Parsed:', parsedMessage);
+        return parsedMessage;
+      }
+      );
+      setParsedMessages((prev) => [...prev, ...parsedMessages]);
+
+    
+      setMessages((prev) => prev.slice(1));
+    }, [messages.length]);
+ 
 
   const scanAndConnect = () => {
 
@@ -192,7 +219,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 20,
+    bottom: 0,
     padding: 16,
     alignItems: 'center',
   },
