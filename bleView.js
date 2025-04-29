@@ -2,16 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Button, PermissionsAndroid, Platform, ScrollView, TextInput, StyleSheet } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import base64 from 'react-native-base64';
-
-const manager = new BleManager();
+import { UUIDContext } from './uuidContext';
 
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [log, setLog] = useState([]);
   const [connected, setConnected] = useState(false);
-  const [serviceUuid, setServiceUuid] = useState('19ed82ae-ed21-4c9d-4145-228e61fe0000'); // UUID mis à jour
-  const [characteristicUuid, setCharacteristicUuid] = useState('19ed82ae-ed21-4c9d-4145-228e62fe0000'); // TX
 
+
+  const { serviceUuid, setServiceUuid, characteristicUuid, setCharacteristicUuid, resetUuids, loading } = React.useContext(UUIDContext);
 
   useEffect(() => { 
     if (Platform.OS === 'android') {
@@ -22,8 +21,6 @@ export default function App() {
       ]);
     }
   }, []);
-
-
 
   const scanAndConnect = () => {
 
@@ -47,10 +44,17 @@ export default function App() {
           for (const service of allServices) {
             const characteristics = await service.characteristics();
             console.log('Service:', service.uuid);
+            setLog((prev) => [...prev, `Service: ${service.uuid}`]);
+            
             characteristics.forEach(c => {
-              console.log('totodu60 Characteristic:', c.uuid, 'Properties:', c.properties);
+              console.log('Characteristic:', c.uuid, 
+                'isNotifiable:', c.isNotifiable, 
+                'isWritableWithResponse:', c.isWritableWithResponse, 
+                'isWritableWithoutResponse:', c.isWritableWithoutResponse, 
+                'isReadable:', c.isReadable
+              );
+              setLog((prev) => [...prev, `Characteristic: ${c.uuid}, isNotifiable: ${c.isNotifiable}, isWritable: ${c.isWritableWithResponse || c.isWritableWithoutResponse}, isReadable: ${c.isReadable}`]);
             });
-            setLog((prev) => [...prev, `Service: ${service.uuid, c.properties}`]);
           }
 
           // Pour récupérer les messages envoytés par le flipper
@@ -85,7 +89,7 @@ export default function App() {
       <Text style={{ fontSize: 24, fontWeight: 'bold' }}>📡 Application compagnon 📡</Text>
       
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>UUID Service (RT):</Text>
+        <Text style={styles.label}>UUID Service:</Text>
         <TextInput
           style={styles.input}
           value={serviceUuid}
@@ -104,7 +108,7 @@ export default function App() {
         />
       </View>
       
-      <Button title="Scanner et se connecter" onPress={scanAndConnect} disabled={connected} />
+      <Button title={connected ? "Se reconnecter" : "Scanner et se connecter"} onPress={scanAndConnect} />
       <ScrollView style={{ marginTop: 20 }}>
 
         <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Messages:</Text>
