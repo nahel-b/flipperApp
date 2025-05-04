@@ -4,11 +4,13 @@ import MapView, { Marker } from 'react-native-maps';
 
 const SondeHubTelemetry = () => {
   const [sondesData, setSondesData] = useState([]);
+
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     const fetchTelemetryData = async () => {
       try {
-        const response = await fetch('https://api.v2.sondehub.org/sondes/telemetry?duration=1h');
+        const response = await fetch('https://api.v2.sondehub.org/sondes/telemetry?duration=1d');
         const data = await response.json();
         ; // Affiche les 5 premières sondes pour le débogage
         // Convert object of sondes to array format
@@ -27,6 +29,7 @@ const SondeHubTelemetry = () => {
             };
         }).filter(Boolean); // Remove null entries if any sonde had no data
         setSondesData(sondesArray);
+        setLoading(false);
         console.log('Données de télémétrie des sondes :', sondesArray[0].uploaders); // Affiche les 3 premières sondes pour le débogage
       } catch (error) { 
         console.error('Erreur lors de la récupération des télémétries des sondes :', error);
@@ -35,6 +38,15 @@ const SondeHubTelemetry = () => {
 
     fetchTelemetryData();
   }, []);
+
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Chargement des données de télémétrie...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
