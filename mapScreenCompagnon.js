@@ -1,5 +1,5 @@
 import React,{useState,useEffect,} from 'react';
-import { View, StyleSheet, TouchableOpacity, Text,Platform, Modal, Dimensions, ScrollView } from 'react-native';
+import { View, StyleSheet,PermissionsAndroid, TouchableOpacity, Text,Platform, Modal, Dimensions, ScrollView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Haptics from 'expo-haptics';
 import base64 from 'react-native-base64';
@@ -16,7 +16,7 @@ import parseAprs from './parserAPRS';
 import { UUIDContext } from './uuidContext';
 
 import { BleManager } from 'react-native-ble-plx';
-// const manager = new BleManager();
+const manager = new BleManager();
 
 
 
@@ -85,6 +85,30 @@ export default function MapScreen({ onScanConnect }) {
     
       setMessages((prev) => prev.slice(1));
     }, [messages.length]);
+
+  
+    const postBackend = async (data) => {
+      try {
+        const response = await fetch('https://pocfablab.osc-fr1.scalingo.io/api/position', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const responseData = await response.json();
+        console.log('Réponse du backend:', responseData);
+        setLog((prev) => [...prev, 'Réponse du backend: ' + JSON.stringify(responseData)]);
+        setModalVisible(false);
+      }
+      catch (error) {
+        console.error('Erreur lors de l\'envoi des données au backend:', error);
+        setLog((prev) => [...prev, 'Erreur lors de l\'envoi des données au backend: ' + error]);
+      }
+    };
  
 
   const scanAndConnect = () => {
@@ -102,6 +126,8 @@ export default function MapScreen({ onScanConnect }) {
     // setMessages((prev) => [...prev, trame2]);
     // setMessages((prev) => [...prev, trame3]);
     // setMessages((prev) => [...prev, trame4]);
+
+
 
     manager.startDeviceScan(null, null, async (error, device) => { 
 
@@ -242,6 +268,9 @@ export default function MapScreen({ onScanConnect }) {
               </>
             )}
           </ScrollView>
+          <TouchableOpacity style={styles.closeButton} onPress={() => postBackend(selectedMarker)}>
+            <Text style={{color:'white', fontWeight:'bold'}}>Envoyer au dashboard</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
             <Text style={{color:'white', fontWeight:'bold'}}>Fermer</Text>
           </TouchableOpacity>
@@ -255,7 +284,21 @@ export default function MapScreen({ onScanConnect }) {
        <Text style={{ fontSize: 18,opacity : 0.7,textAlign : "center" }}>{connected ? 'connecté' : 'non connecté'}</Text>
        </View>
        </View>
+
+
       <View style={styles.bottomBar}>
+        {showLog && (
+          <ScrollView style={{ maxHeight: Dimensions.get('window').height * 0.5,width : "100%" }}>
+            {log.map((msg, i) => (
+              <View key={i} style={{backgroundColor : "white"}}>
+                <Text>{msg}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+        <TouchableOpacity style={{}} onPress={() => setShowLog(!showLog)}>
+          <Text style={styles.buttonText}>{showLog ? "Cacher le log" : "Afficher le log"}</Text>
+        </TouchableOpacity>
         <Text style={{fontWeight : "bold"}} >Trame APRS recus : {nbMessage}</Text>
         <TouchableOpacity style={styles.button} onPress={scanAndConnect}>
           <Text style={styles.buttonText}>{ connected ? "Se reconnecter" : "Scanner et se connecter"}</Text>

@@ -4,6 +4,9 @@ import { BleManager } from 'react-native-ble-plx';
 import base64 from 'react-native-base64';
 import { UUIDContext } from './uuidContext';
 
+const manager = new BleManager();
+
+
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [log, setLog] = useState([]);

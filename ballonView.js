@@ -53,7 +53,7 @@ const SondeHubTelemetry = () => {
               key={index}
               coordinate={{ latitude: sonde.lat, longitude: sonde.lon }}
               title={sonde.name}
-              description={`Type : ${sonde.type}  Altitude: ${sonde.alt || 'N/A'} `}
+              description={`Type : ${sonde.type} | Altitude: ${sonde.alt || 'N/A'}m | Freq: ${sonde.frequency || 'N/A'} MHz`}
             />
           ))} 
         </MapView>
